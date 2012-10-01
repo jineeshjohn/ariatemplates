@@ -190,7 +190,7 @@ Aria.beanDefinitions({
                 },
                 "$prefix" : {
                     $type : "json:Boolean",
-                    $description : "Defaulted to true. Use it only when required to use features like ( @font-face and @keyframes), avoid otherwise, to limit  CSS class name collisions."
+                    $description : "Defaulted to true, if the value is true, every rule is prefixed and applies to the template it is linked to. Set it false only when required to use features like ( @font-face and @keyframes), avoid otherwise, to limit  CSS class name collisions."
                 }
             }
         },
