@@ -133,7 +133,7 @@
              * Template context configuration
              * @protected
              * @type Object
-             *
+             * 
              * <pre>
              *     {
              *      div : // div acting as a container for the template
@@ -298,7 +298,8 @@
             BEFORE_REFRESH_EXCEPTION : "Error in template %1: an exception happened in $beforeRefresh.",
             AFTER_REFRESH_EXCEPTION : "Error in template %1: an exception happened in $afterRefresh.",
             ALREADY_REFRESHING : "$refresh was called while another refresh is happening on the same template (%1). This is not allowed. Please check bindings.",
-            MISSING_MODULE_CTRL_FACTORY : "Template %1 cannot be initialized without aria.templates.ModuleCtrlFactory, make sure it is loaded"
+            MISSING_MODULE_CTRL_FACTORY : "Template %1 cannot be initialized without aria.templates.ModuleCtrlFactory, make sure it is loaded",
+            ID_LABEL : Aria.testModeIdLabel || "GenId"
         },
         $prototype : {
 
@@ -357,7 +358,7 @@
              * This method is called after a refresh, and call a method $afterRefresh in the Template that can be
              * overriden.
              * @param {Object} sectionDescription
-             *
+             * 
              * <pre>
              *     {
              *         outputSection : // {String} section id
@@ -382,6 +383,11 @@
              * @implements aria.templates.ITemplate
              */
             $refresh : function (args) {
+                // empty the ids
+                if (!args) {
+                    this._idMap = {};
+                }
+
                 if (aria.templates.RefreshManager.isStopped()) {
                     // look for the section to be refreshed, and notify it:
                     if (args) {
@@ -777,7 +783,11 @@
                 var differed;
                 var params = this._cfg;
                 var tpl = this._tpl;
-                var domElt = !section.id ? params.tplDiv : aria.utils.Dom.getElementById(this.$getId(section.id));
+                var elemId = section.id;
+                if (!Aria.testMode) {
+                    elemId = this.$getId(section.id);
+                }
+                var domElt = !section.id ? params.tplDiv : aria.utils.Dom.getElementById(elemId);
                 if (domElt) {
                     if (!skipInsertHTML) {
                         // replaceHTML may change domElt (especially on IE)
@@ -1283,10 +1293,38 @@
              * Return a global id from an id specified in a template. It adds a template-specific suffix or prefix so
              * that there is no name collision between several instances of the same template, or different templates.
              * @param {String} id specified in the template
+             * @param {Boolean} Enables the autogeneration of ids
              * @return {String} global id which should not collide with ids from other templates
              */
-            $getId : function (id) {
-                return [this._id, id].join("_");
+            $getId : function (id, newId) {
+                // if( )
+                if (!(Aria.testMode || newId)) {
+                    return [this._id, id].join("_");
+                } else {
+                    return this.$getNewId(id);
+                }
+            },
+
+            /**
+             * Return a global id from an id specified in a template. It adds a unique template-specific prefix and concatenates a 
+             * defined string with a auto generated sequenced number for the id suffix so
+             * that there is no name collision between several instances of the same template, or different templates.
+             * @param {String} special ids which has plus suffixes 
+             * @return {String} global id which should not collide with ids from other templates
+             */
+
+            $getNewId : function (id) {
+                var idVal = "";
+                if (id.indexOf("+") != -1) {
+                    if (id in this._idMap) {
+                        idVal = this._idMap[id] + 1;
+                        this._idMap[id] = idVal;
+                    } else {
+                        idVal = 1;
+                        this._idMap[id] = idVal;
+                    }
+                }
+                return [this._id, id].join("_").concat(this.ID_LABEL).concat(idVal).replace("+", "");
             },
 
             /**
@@ -1308,7 +1346,7 @@
             __$writeId : function (id) {
                 // the id must come from the real template context (for a macro lib today, this is not the real
                 // templateCtxt)
-                var genId = this._out.tplCtxt.$getId(id);
+                var genId = Aria.testMode ? this._out.tplCtxt.$getId(id, true) : this._out.tplCtxt.$getId(id);
                 this._out.write('id="' + genId + '"');
             },
 

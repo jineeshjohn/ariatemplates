@@ -159,8 +159,9 @@
             type = cfg.type;
             bindings = cfg.bindRefreshTo;
             id = cfg.id;
+            var regExp = (Aria.testMode) ? /^[\w\+\-:\.]+$/ : /^[\w\-:\.]+$/;
 
-            if (!/^[\w\-:\.]+$/.test(id)) {
+            if (!regExp.test(id)) {
                 this.$logError(this.INVALID_SECTION_ID, [this.tplCtxt.tplClasspath, id]);
                 this.cfgOk = false;
                 return;
@@ -530,7 +531,7 @@
              * RegisterBinding is used to add bindings to Templates and sections.
              * @public
              * @param {Object} bind
-             *
+             * 
              * <pre>
              *  {
              *      inside : ...
@@ -574,14 +575,14 @@
              * Check if the binding given is valid for a processing indicator. "to" is mandatory and must be a boolean
              * value
              * @param {Object} bind
-             *
+             * 
              * <pre>
              *  {
              *      inside : ...
              *      to : ...
              *  }
              * </pre>
-             *
+             * 
              * @return Boolean true is the binding is valid
              */
             __isValidProcessingBind : function (bind) {
@@ -605,7 +606,7 @@
              * Add bindings to loading overlay and sections.
              * @public
              * @param {Object} bind
-             *
+             * 
              * <pre>
              *  {
              *      inside : ...
@@ -706,7 +707,7 @@
              * defined in the binding
              * @protected
              * @param {Object} res Object containing information about the data that changed
-             *
+             * 
              * <pre>
              * {
              *   dataHolder : {Object},
@@ -752,7 +753,16 @@
                     // (used in the tooltip)
                     var cssClass = this.cssClass ? ' class="' + this.cssClass + '"' : '';
                     var attributeList = this.attributes ? aria.utils.Html.buildAttributeList(this.attributes) : '';
-                    var h = ['<', this.domType, attributeList, cssClass, ' id="', this.tplCtxt.$getId(this.id), '" ',
+                    var genId;
+                    if (Aria.testMode) {
+                        delete this.idMap[this.id];
+                        this.id = genId = this.tplCtxt.$getId(this.id, true);
+                        this.idMap[this.id] = this;
+                    } else {
+                        genId = this.tplCtxt.$getId(this.id);
+                    }
+
+                    var h = ['<', this.domType, attributeList, cssClass, ' id="', genId, '" ',
                             aria.utils.Delegate.getMarkup(this.delegateId), '>'];
                     out.write(h.join(''));// opening the section
                     return;
