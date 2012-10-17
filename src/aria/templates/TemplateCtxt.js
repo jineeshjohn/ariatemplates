@@ -63,7 +63,8 @@
                 'aria.utils.Type', 'aria.templates.TemplateCtxtManager', 'aria.templates.RefreshManager',
                 'aria.templates.CSSMgr', 'aria.utils.Path', 'aria.utils.Delegate', 'aria.templates.NavigationManager',
                 'aria.templates.SectionWrapper', 'aria.core.environment.Customizations',
-                'aria.templates.DomElementWrapper', 'aria.templates.MarkupWriter', 'aria.utils.DomOverlay'],
+                'aria.templates.DomElementWrapper', 'aria.templates.MarkupWriter', 'aria.utils.DomOverlay',
+                'aria.utils.IdManager'],
         $implements : ['aria.templates.ITemplate', 'aria.templates.ITemplateCtxt'],
         $extends : "aria.templates.BaseCtxt",
         $onload : function () {
@@ -166,7 +167,8 @@
              * @protected
              * @type Boolean
              */
-            this._globalCssDepsLoaded = false; // added for PTR 05086835
+            this._globalCssDepsLoaded = false; // added for PTR 05086835           
+
         },
         $destructor : function () {
             aria.templates.TemplateCtxtManager.remove(this);
@@ -244,6 +246,10 @@
                 mainSection.$dispose();
                 this._mainSection = null;
             }
+            if (this._idManager) {
+                this._idManager.$dispose();
+                this._idManager = null;
+            }
 
             var cfg = this._cfg;
             if (cfg) {
@@ -299,7 +305,7 @@
             AFTER_REFRESH_EXCEPTION : "Error in template %1: an exception happened in $afterRefresh.",
             ALREADY_REFRESHING : "$refresh was called while another refresh is happening on the same template (%1). This is not allowed. Please check bindings.",
             MISSING_MODULE_CTRL_FACTORY : "Template %1 cannot be initialized without aria.templates.ModuleCtrlFactory, make sure it is loaded",
-            ID_LABEL : Aria.testModeIdLabel || "GenId"
+            SUFFIX_ID : "auto"
         },
         $prototype : {
 
@@ -759,6 +765,7 @@
              * @param {Object} options optional object containing options for the markup writer
              */
             createSection : function (callback, options) {
+
                 if (this._out != null) {
                     // calling refresh while the HTML is being generated is not permitted
                     this.$logError(this.INVALID_STATE_FOR_REFRESH, [this.tplClasspath]);
@@ -979,6 +986,10 @@
                     idCount++;
                 }
 
+                if (Aria.testMode) {
+                    this._idManager = new aria.utils.IdManager(this._id, this.SUFFIX_ID);
+                }
+
                 // if the template has been customized, get the actual (customized) classpath
                 // this is already done in the widget
                 // this.tplClasspath = aria.core.environment.Customizations.getTemplateCP(cfg.classpath);
@@ -1132,6 +1143,10 @@
                 var res = tpl.__$initTemplate();
                 this.__loadLibs(tpl.__$macrolibs, "macrolibs");
                 return res;
+            },
+
+            setIdLabel : function (label) {
+                this.ID_LABEL = label;
             },
 
             /**
@@ -1301,30 +1316,8 @@
                 if (!(Aria.testMode || newId)) {
                     return [this._id, id].join("_");
                 } else {
-                    return this.$getNewId(id);
+                    return this._idManager.$getNewId(id);
                 }
-            },
-
-            /**
-             * Return a global id from an id specified in a template. It adds a unique template-specific prefix and concatenates a 
-             * defined string with a auto generated sequenced number for the id suffix so
-             * that there is no name collision between several instances of the same template, or different templates.
-             * @param {String} special ids which has plus suffixes 
-             * @return {String} global id which should not collide with ids from other templates
-             */
-
-            $getNewId : function (id) {
-                var idVal = "";
-                if (id.indexOf("+") != -1) {
-                    if (id in this._idMap) {
-                        idVal = this._idMap[id] + 1;
-                        this._idMap[id] = idVal;
-                    } else {
-                        idVal = 1;
-                        this._idMap[id] = idVal;
-                    }
-                }
-                return [this._id, id].join("_").concat(this.ID_LABEL).concat(idVal).replace("+", "");
             },
 
             /**
@@ -1347,7 +1340,12 @@
                 // the id must come from the real template context (for a macro lib today, this is not the real
                 // templateCtxt)
                 var genId = Aria.testMode ? this._out.tplCtxt.$getId(id, true) : this._out.tplCtxt.$getId(id);
-                this._out.write('id="' + genId + '"');
+                if (!Aria.testMode && genId.indexOf("+") != -1) {
+                    this._out.write(' ');
+                } else {
+                    this._out.write('id="' + genId + '"');
+                }
+
             },
 
             /**

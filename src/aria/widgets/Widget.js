@@ -345,6 +345,7 @@
              * @param {aria.templates.MarkupWriter} out
              */
             __markupBegin : function (out) {
+
                 var cfg = this._cfg, cssClasses = aria.core.TplClassLoader.addPrintOptions(this._cssClassNames, cfg.printOptions);
                 if (cfg.block) {
                     cssClasses += " xBlock";
@@ -353,7 +354,11 @@
                 this._checkCfgConsistency();
 
                 // widget markup begin
-                out.write('<span id="' + this._domId + '" ');
+                if (!Aria.testMode && this._domId.indexOf("+") != -1) {
+                    out.write('<span ');
+                } else {
+                    out.write('<span id="' + this._domId + '" ');
+                }
 
                 // Tag the span for event delegation. delegateId might be defined by someone else
                 if (!this._delegateId) {
