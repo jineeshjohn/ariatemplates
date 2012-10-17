@@ -25,7 +25,7 @@ Aria.classDefinition({
      * Constructor
      * @param {String} prefix
      */
-    $constructor : function (prefix) {
+    $constructor : function (prefix, suffix) {
         /**
          * Map of free ids
          * @protected
@@ -45,6 +45,14 @@ Aria.classDefinition({
          * @type String
          */
         this.prefix = prefix || "";
+
+        /**
+         * Suffix for the ids
+         * @type String
+         */
+        this.suffix = suffix || "";
+
+        this._idMap = {};
 
     },
     $destructor : function () {
@@ -67,6 +75,35 @@ Aria.classDefinition({
             var id = this.prefix + this._idCounter;
             this._idCounter++;
             return id;
+        },
+
+        /**
+         * Return a global id from an id specified in a template. It adds a unique template-specific prefix and
+         * concatenates a defined string with a auto generated sequenced number for the id suffix so that there is no
+         * name collision between several instances of the same template, or different templates.
+         * @param {String} special ids which has plus suffixes
+         * @return {String} global id which should not collide with ids from other templates
+         */
+
+        $getNewId : function (id) {
+            if (id) {
+                var idVal = "";
+                if (id.indexOf("+") != -1) {
+                    id = id.replace("+", "");
+                    if (id in this._idMap) {
+                        idVal = this._idMap[id] + 1;
+                        this._idMap[id] = idVal;
+                    } else {
+                        idVal = 1;
+                        this._idMap[id] = idVal;
+                    }
+                }
+                return [this.prefix, id.replace("+", ""), this.suffix, idVal].join("_");
+            } else {
+                // Empty Ids will be replaced by underscore
+                return [this.prefix, "", this.suffix, this._idCounter++].join("_");
+            }
+
         },
 
         /**

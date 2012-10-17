@@ -159,7 +159,7 @@
             type = cfg.type;
             bindings = cfg.bindRefreshTo;
             id = cfg.id;
-            var regExp = (Aria.testMode) ? /^[\w\+\-:\.]+$/ : /^[\w\-:\.]+$/;
+            var regExp = /^[\w\+\-:\.]+$/;
 
             if (!regExp.test(id)) {
                 this.$logError(this.INVALID_SECTION_ID, [this.tplCtxt.tplClasspath, id]);
@@ -753,16 +753,23 @@
                     // (used in the tooltip)
                     var cssClass = this.cssClass ? ' class="' + this.cssClass + '"' : '';
                     var attributeList = this.attributes ? aria.utils.Html.buildAttributeList(this.attributes) : '';
-                    var genId;
+                    var genId = '';
+
                     if (Aria.testMode) {
                         delete this.idMap[this.id];
-                        this.id = genId = this.tplCtxt.$getId(this.id, true);
+                        this.id = this.tplCtxt.$getId(this.id, true);
+                        genId = ' id="' + this.id + '" ';
                         this.idMap[this.id] = this;
                     } else {
-                        genId = this.tplCtxt.$getId(this.id);
+                        //TODO 
+                        if (this.id && this.id.indexOf("+") != -1) {
+                            genId = ' ';
+                        } else {
+                            genId = ' id="' + this.tplCtxt.$getId(this.id) + '" ';
+                        }
                     }
 
-                    var h = ['<', this.domType, attributeList, cssClass, ' id="', genId, '" ',
+                    var h = ['<', this.domType, attributeList, cssClass, genId,
                             aria.utils.Delegate.getMarkup(this.delegateId), '>'];
                     out.write(h.join(''));// opening the section
                     return;
