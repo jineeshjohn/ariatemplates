@@ -159,8 +159,9 @@
             type = cfg.type;
             bindings = cfg.bindRefreshTo;
             id = cfg.id;
+            var regExp = /^[\w\+\-:\.]+$/;
 
-            if (!/^[\w\-:\.]+$/.test(id)) {
+            if (!regExp.test(id)) {
                 this.$logError(this.INVALID_SECTION_ID, [this.tplCtxt.tplClasspath, id]);
                 this.cfgOk = false;
                 return;
@@ -177,6 +178,8 @@
              * @type String
              */
             this.id = id;
+
+            this._domElemId = this.tplCtxt.getDomId(this.id);
 
             /**
              * CSS class for the section
@@ -752,7 +755,12 @@
                     // (used in the tooltip)
                     var cssClass = this.cssClass ? ' class="' + this.cssClass + '"' : '';
                     var attributeList = this.attributes ? aria.utils.Html.buildAttributeList(this.attributes) : '';
-                    var h = ['<', this.domType, attributeList, cssClass, ' id="', this.tplCtxt.$getId(this.id), '" ',
+                    if (this.tplCtxt.hasPlusInId(this.id)) {
+                        delete this.idMap[this.id];
+                        this.idMap[this._domElemId] = this;
+                        this.id = this._domElemId;
+                    }
+                    var h = ['<', this.domType, attributeList, cssClass, ' id="', this._domElemId, '" ',
                             aria.utils.Delegate.getMarkup(this.delegateId), '>'];
                     out.write(h.join(''));// opening the section
                     return;

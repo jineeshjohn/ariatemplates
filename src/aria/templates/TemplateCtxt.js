@@ -62,7 +62,7 @@
         $dependencies : ['aria.templates.Layout', 'aria.templates.CfgBeans', 'aria.utils.Array', 'aria.utils.Function',
                 'aria.utils.Type', 'aria.templates.TemplateCtxtManager', 'aria.templates.RefreshManager',
                 'aria.templates.CSSMgr', 'aria.utils.Path', 'aria.utils.Delegate', 'aria.templates.NavigationManager',
-                'aria.templates.SectionWrapper', 'aria.core.environment.Customizations',
+                'aria.templates.SectionWrapper', 'aria.core.environment.Customizations', 'aria.utils.IdManager',
                 'aria.templates.DomElementWrapper', 'aria.templates.MarkupWriter', 'aria.utils.DomOverlay'],
         $implements : ['aria.templates.ITemplate', 'aria.templates.ITemplateCtxt'],
         $extends : "aria.templates.BaseCtxt",
@@ -133,7 +133,7 @@
              * Template context configuration
              * @protected
              * @type Object
-             *
+             * 
              * <pre>
              *     {
              *      div : // div acting as a container for the template
@@ -279,6 +279,11 @@
             this.flowCtrl = null;
             this.flowCtrlPrivate = null;
 
+            if (this._idManager) {
+                this._idManager.$dispose();
+                this._idManager = null;
+            }
+
             this.$BaseCtxt.$destructor.call(this);
         },
         $statics : {
@@ -298,7 +303,8 @@
             BEFORE_REFRESH_EXCEPTION : "Error in template %1: an exception happened in $beforeRefresh.",
             AFTER_REFRESH_EXCEPTION : "Error in template %1: an exception happened in $afterRefresh.",
             ALREADY_REFRESHING : "$refresh was called while another refresh is happening on the same template (%1). This is not allowed. Please check bindings.",
-            MISSING_MODULE_CTRL_FACTORY : "Template %1 cannot be initialized without aria.templates.ModuleCtrlFactory, make sure it is loaded"
+            MISSING_MODULE_CTRL_FACTORY : "Template %1 cannot be initialized without aria.templates.ModuleCtrlFactory, make sure it is loaded",
+            SUFFIX_ID : "auto"
         },
         $prototype : {
 
@@ -357,7 +363,7 @@
              * This method is called after a refresh, and call a method $afterRefresh in the Template that can be
              * overriden.
              * @param {Object} sectionDescription
-             *
+             * 
              * <pre>
              *     {
              *         outputSection : // {String} section id
@@ -505,7 +511,7 @@
                 }
                 var Ids = [];
                 while (!element.__widget) {
-                    element = element.parentElement;
+                    element = element.parentElement || element.parentNode; // Fx < 9 compat
                 }
                 var id = element.__widget.getId();
                 if (!id) {
@@ -777,7 +783,8 @@
                 var differed;
                 var params = this._cfg;
                 var tpl = this._tpl;
-                var domElt = !section.id ? params.tplDiv : aria.utils.Dom.getElementById(this.$getId(section.id));
+                var domId = this.hasPlusInId(section.id) ? section.id : this.$getId(section.id);
+                var domElt = !section.id ? params.tplDiv : aria.utils.Dom.getElementById(domId);
                 if (domElt) {
                     if (!skipInsertHTML) {
                         // replaceHTML may change domElt (especially on IE)
@@ -967,6 +974,10 @@
                 } else {
                     this._id = "tpl" + idCount;
                     idCount++;
+                }
+
+                if (Aria.testMode) {
+                    this._idManager = new aria.utils.IdManager(this._id, this.SUFFIX_ID);
                 }
 
                 // if the template has been customized, get the actual (customized) classpath
@@ -1285,8 +1296,12 @@
              * @param {String} id specified in the template
              * @return {String} global id which should not collide with ids from other templates
              */
-            $getId : function (id) {
+            $getId : function (id, newId) {
+                // if( )
                 return [this._id, id].join("_");
+            },
+            $getAutoId : function (id) {
+                return this._idManager.$getNewId(id);
             },
 
             /**
@@ -1308,8 +1323,20 @@
             __$writeId : function (id) {
                 // the id must come from the real template context (for a macro lib today, this is not the real
                 // templateCtxt)
-                var genId = this._out.tplCtxt.$getId(id);
+                var genId = this._out.tplCtxt.getDomId(id);
                 this._out.write('id="' + genId + '"');
+            },
+            getDomId : function (id) {
+                if (this.hasPlusInId(id)) {
+                    return this.$getAutoId(id);
+                }
+                return this.$getId(id);
+            },
+            hasPlusInId : function (id) {
+                if ((id && id.indexOf("+") != -1) || Aria.testMode) {
+                    return true;
+                }
+                return false;
             },
 
             /**
