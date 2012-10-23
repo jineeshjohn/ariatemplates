@@ -196,8 +196,9 @@
                 // makes ids less reusable (and IE has leaks when ids are not reused)
                 this._domId = this._createDynamicId();
             } else {
-                this._domId = this._context.$getId(cfg.id);
+                this._domId = this._context.getDomId(cfg.id);
             }
+
         },
         $destructor : function () {
             this.removeDelegation();
@@ -354,11 +355,8 @@
                 this._checkCfgConsistency();
 
                 // widget markup begin
-                if (!Aria.testMode && this._domId.indexOf("+") != -1) {
-                    out.write('<span ');
-                } else {
-                    out.write('<span id="' + this._domId + '" ');
-                }
+
+                out.write('<span id="' + this._domId + '" ');
 
                 // Tag the span for event delegation. delegateId might be defined by someone else
                 if (!this._delegateId) {

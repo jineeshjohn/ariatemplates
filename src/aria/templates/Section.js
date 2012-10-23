@@ -179,6 +179,8 @@
              */
             this.id = id;
 
+            this._domElemId = this.tplCtxt.getDomId(this.id);
+
             /**
              * CSS class for the section
              * @type String
@@ -753,23 +755,12 @@
                     // (used in the tooltip)
                     var cssClass = this.cssClass ? ' class="' + this.cssClass + '"' : '';
                     var attributeList = this.attributes ? aria.utils.Html.buildAttributeList(this.attributes) : '';
-                    var genId = '';
-
-                    if (Aria.testMode) {
+                    if (this.tplCtxt.hasPlusInId(this.id)) {
                         delete this.idMap[this.id];
-                        this.id = this.tplCtxt.$getId(this.id, true);
-                        genId = ' id="' + this.id + '" ';
-                        this.idMap[this.id] = this;
-                    } else {
-                        //TODO 
-                        if (this.id && this.id.indexOf("+") != -1) {
-                            genId = ' ';
-                        } else {
-                            genId = ' id="' + this.tplCtxt.$getId(this.id) + '" ';
-                        }
+                        this.idMap[this._domElemId] = this;
+                        this.id = this._domElemId;
                     }
-
-                    var h = ['<', this.domType, attributeList, cssClass, genId,
+                    var h = ['<', this.domType, attributeList, cssClass, ' id="', this._domElemId, '" ',
                             aria.utils.Delegate.getMarkup(this.delegateId), '>'];
                     out.write(h.join(''));// opening the section
                     return;

@@ -62,9 +62,8 @@
         $dependencies : ['aria.templates.Layout', 'aria.templates.CfgBeans', 'aria.utils.Array', 'aria.utils.Function',
                 'aria.utils.Type', 'aria.templates.TemplateCtxtManager', 'aria.templates.RefreshManager',
                 'aria.templates.CSSMgr', 'aria.utils.Path', 'aria.utils.Delegate', 'aria.templates.NavigationManager',
-                'aria.templates.SectionWrapper', 'aria.core.environment.Customizations',
-                'aria.templates.DomElementWrapper', 'aria.templates.MarkupWriter', 'aria.utils.DomOverlay',
-                'aria.utils.IdManager'],
+                'aria.templates.SectionWrapper', 'aria.core.environment.Customizations', 'aria.utils.IdManager',
+                'aria.templates.DomElementWrapper', 'aria.templates.MarkupWriter', 'aria.utils.DomOverlay'],
         $implements : ['aria.templates.ITemplate', 'aria.templates.ITemplateCtxt'],
         $extends : "aria.templates.BaseCtxt",
         $onload : function () {
@@ -167,7 +166,7 @@
              * @protected
              * @type Boolean
              */
-            this._globalCssDepsLoaded = false; // added for PTR 05086835           
+            this._globalCssDepsLoaded = false; // added for PTR 05086835
 
         },
         $destructor : function () {
@@ -246,10 +245,6 @@
                 mainSection.$dispose();
                 this._mainSection = null;
             }
-            if (this._idManager) {
-                this._idManager.$dispose();
-                this._idManager = null;
-            }
 
             var cfg = this._cfg;
             if (cfg) {
@@ -284,6 +279,11 @@
             this.moduleCtrlPrivate = null;
             this.flowCtrl = null;
             this.flowCtrlPrivate = null;
+
+            if (this._idManager) {
+                this._idManager.$dispose();
+                this._idManager = null;
+            }
 
             this.$BaseCtxt.$destructor.call(this);
         },
@@ -389,11 +389,6 @@
              * @implements aria.templates.ITemplate
              */
             $refresh : function (args) {
-                // empty the ids
-                if (!args) {
-                    this._idMap = {};
-                }
-
                 if (aria.templates.RefreshManager.isStopped()) {
                     // look for the section to be refreshed, and notify it:
                     if (args) {
@@ -517,7 +512,7 @@
                 }
                 var Ids = [];
                 while (!element.__widget) {
-                    element = element.parentElement;
+                    element = element.parentElement || element.parentNode; // Fx < 9 compat
                 }
                 var id = element.__widget.getId();
                 if (!id) {
@@ -790,11 +785,8 @@
                 var differed;
                 var params = this._cfg;
                 var tpl = this._tpl;
-                var elemId = section.id;
-                if (!Aria.testMode) {
-                    elemId = this.$getId(section.id);
-                }
-                var domElt = !section.id ? params.tplDiv : aria.utils.Dom.getElementById(elemId);
+                var domId = this.hasPlusInId(section.id) ? section.id : this.$getId(section.id);
+                var domElt = !section.id ? params.tplDiv : aria.utils.Dom.getElementById(domId);
                 if (domElt) {
                     if (!skipInsertHTML) {
                         // replaceHTML may change domElt (especially on IE)
@@ -1145,10 +1137,6 @@
                 return res;
             },
 
-            setIdLabel : function (label) {
-                this.ID_LABEL = label;
-            },
-
             /**
              * Begin a section. This method is intended to be called only from the generated code of templates (created
              * in aria.templates.ClassGenerator) and never directly from developper code. A call to this method is
@@ -1308,16 +1296,14 @@
              * Return a global id from an id specified in a template. It adds a template-specific suffix or prefix so
              * that there is no name collision between several instances of the same template, or different templates.
              * @param {String} id specified in the template
-             * @param {Boolean} Enables the autogeneration of ids
              * @return {String} global id which should not collide with ids from other templates
              */
             $getId : function (id, newId) {
                 // if( )
-                if (!(Aria.testMode || newId)) {
-                    return [this._id, id].join("_");
-                } else {
-                    return this._idManager.$getNewId(id);
-                }
+                return [this._id, id].join("_");
+            },
+            $getAutoId : function (id) {
+                return this._idManager.$getNewId(id);
             },
 
             /**
@@ -1339,13 +1325,20 @@
             __$writeId : function (id) {
                 // the id must come from the real template context (for a macro lib today, this is not the real
                 // templateCtxt)
-                var genId = Aria.testMode ? this._out.tplCtxt.$getId(id, true) : this._out.tplCtxt.$getId(id);
-                if (!Aria.testMode && genId.indexOf("+") != -1) {
-                    this._out.write(' ');
-                } else {
-                    this._out.write('id="' + genId + '"');
+                var genId = this._out.tplCtxt.getDomId(id);
+                this._out.write('id="' + genId + '"');
+            },
+            getDomId : function (id) {
+                if (this.hasPlusInId(id)) {
+                    return this.$getAutoId(id);
                 }
-
+                return this.$getId(id);
+            },
+            hasPlusInId : function (id) {
+                if ((id && id.indexOf("+") != -1) || Aria.testMode) {
+                    return true;
+                }
+                return false;
             },
 
             /**
